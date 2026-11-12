@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "accent": "#16705d",
+  "files": [
+    {
+      "file": "hero-light.png",
+      "template": "hero-code",
+      "theme": "light",
+      "language": "en",
+      "kind": "fixture",
+      "captureId": "two-vaults",
+      "inputFile": {
+        "file": "capture-inputs/two-vaults/first-device.sh",
+        "sha256": "528689216faf09059000b5cb355715a2997dd7974bfe0a7e554ae55b9398b171"
+      },
+      "labels": {
+        "result": "Device 2 · import and read"
+      },
+      "sha256": "e0ddbedb594b56dfde3af3b8058fa7e9b337ef9a18edd75b1f730b02c2b041fd",
+      "bytes": 95950,
+      "cssWidth": 900,
+      "cssHeight": 382.34375,
+      "contentBounds": {
+        "left": 29,
+        "top": 41,
+        "right": 871,
+        "bottom": 341.34375
+      },
+      "contentRatio": 0.6905882713526768,
+      "contentArea": 237637.8984375,
+      "balanceRatio": 1,
+      "minMainFontSize": 24,
+      "endpoints": [],
+      "checks": {
+        "overflow": "pass",
+        "fontSize": "pass",
+        "contrast": "pass",
+        "fields": "pass",
+        "mainText": "pass",
+        "density": "pass",
+        "balance": "pass",
+        "links": "pass",
+        "size": "pass"
+      },
+      "problems": {
+        "overflow": [],
+        "fontSize": [],
+        "contrast": [],
+        "fields": [],
+        "mainText": [],
+        "density": [],
+        "balance": [],
+        "links": []
+      },
+      "width": 900,
+      "height": 382.34375
+    },
+    {
+      "file": "hero-dark.png",
+      "template": "hero-code",
+      "theme": "dark",
+      "language": "en",
+      "kind": "fixture",
+      "captureId": "two-vaults",
+      "inputFile": {
+        "file": "capture-inputs/two-vaults/first-device.sh",
+        "sha256": "528689216faf09059000b5cb355715a2997dd7974bfe0a7e554ae55b9398b171"
+      },
+      "labels": {
+        "result": "Device 2 · import and read"
+      },
+      "sha256": "4666fb14d0e073cf8ab5d54b1a64a6630cc3f5fc70e8e2f49393d7c657762d1f",
+      "bytes": 96165,
+      "cssWidth": 900,
+      "cssHeight": 382.34375,
+      "contentBounds": {
+        "left": 29,
+        "top": 41,
+        "right": 871,
+        "bottom": 341.34375
+      },
+      "contentRatio": 0.6905882713526768,
+      "contentArea": 237637.8984375,
+      "balanceRatio": 1,
+      "minMainFontSize": 24,
+      "endpoints": [],
+      "checks": {
+        "overflow": "pass",
+        "fontSize": "pass",
+        "contrast": "pass",
+        "fields": "pass",
+        "mainText": "pass",
+        "density": "pass",
+        "balance": "pass",
+        "links": "pass",
+        "size": "pass"
+      },
+      "problems": {
+        "overflow": [],
+        "fontSize": [],
+        "contrast": [],
+        "fields": [],
+        "mainText": [],
+        "density": [],
+        "balance": [],
+        "links": []
+      },
+      "width": 900,
+      "height": 382.34375
+    },
+    {
+      "file": "hero-light.zh-CN.png",
+      "template": "hero-code",
+      "theme": "light",
+      "language": "zh-CN",
+      "kind": "fixture",
+      "captureId": "two-vaults",
+      "inputFile": {
+        "file": "capture-inputs/two-vaults/first-device.sh",
+        "sha256": "528689216faf09059000b5cb355715a2997dd7974bfe0a7e554ae55b9398b171"
+      },
+      "labels": {
+        "result": "第二台电脑 · 导入并读取"
+      },
+      "sha256": "58a2d9bbadc13c0ea7cd4dffe01fe3e42e4574ee7791cd7cc7de3edf50c3dace",
+      "bytes": 97312,
+      "cssWidth": 900,
+      "cssHeight": 382.34375,
+      "contentBounds": {
+        "left": 29,
+        "top": 41,
+        "right": 871,
+        "bottom": 341.34375
+      },
+      "contentRatio": 0.6905882713526768,
+      "contentArea": 237637.8984375,
+      "balanceRatio": 1,
+      "minMainFontSize": 24,
+      "endpoints": [],
+      "checks": {
+        "overflow": "pass",
+        "fontSize": "pass",
+        "contrast": "pass",
+        "fields": "pass",
+        "mainText": "pass",
+        "density": "pass",
+        "balance": "pass",
+        "links": "pass",
+        "size": "pass"
+      },
+      "problems": {
+        "overflow": [],
+        "fontSize": [],
+        "contrast": [],
+        "fields": [],
+        "mainText": [],
+        "density": [],
+        "balance": [],
+        "links": []
+      },
+      "width": 900,
+      "height": 382.34375
+    },
+    {
+      "file": "hero-dark.zh-CN.png",
+      "template": "hero-code",
+      "theme": "dark",
+      "language": "zh-CN",
+      "kind": "fixture",
+      "captureId": "two-vaults",
+      "inputFile": {
+        "file": "capture-inputs/two-vaults/first-device.sh",
+        "sha256": "528689216faf09059000b5cb355715a2997dd7974bfe0a7e554ae55b9398b171"
+      },
+      "labels": {
+        "result": "第二台电脑 · 导入并读取"
+      },
+      "sha256": "d7286e87075dfec42a9a924a1c7ef3981d31bcdba24811696e20136c7c37a4a9",
+      "bytes": 97464,
+      "cssWidth": 900,
+      "cssHeight": 382.34375,
+      "contentBounds": {
+        "left": 29,
+        "top": 41,
+        "right": 871,
+        "bottom": 341.34375
+      },
+      "contentRatio": 0.6905882713526768,
+      "contentArea": 237637.8984375,
+      "balanceRatio": 1,
+      "minMainFontSize": 24,
+      "endpoints": [],
+      "checks": {
+        "overflow": "pass",
+        "fontSize": "pass",
+        "contrast": "pass",
+        "fields": "pass",
+        "mainText": "pass",
+        "density": "pass",
+        "balance": "pass",
+        "links": "pass",
+        "size": "pass"
+      },
+      "problems": {
+        "overflow": [],
+        "fontSize": [],
+        "contrast": [],
+        "fields": [],
+        "mainText": [],
+        "density": [],
+        "balance": [],
+        "links": []
+      },
+      "width": 900,
+      "height": 382.34375
+    }
+  ]
+}

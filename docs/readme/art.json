@@ -1,0 +1,24 @@
+{
+  "accent": "#16705d",
+  "images": [
+    {
+      "id": "hero",
+      "template": "hero-code",
+      "title": {
+        "en": "Keep using the same key on another computer",
+        "zh-CN": "换台电脑也能接着用"
+      },
+      "subtitle": {
+        "en": "Save on device 1, then import and read on device 2.",
+        "zh-CN": "第一台存入，第二台同步后读取。"
+      },
+      "resultLabel": {
+        "en": "Device 2 · import and read",
+        "zh-CN": "第二台电脑 · 导入并读取"
+      },
+      "compact": true,
+      "fixture": true,
+      "captureId": "two-vaults"
+    }
+  ]
+}
