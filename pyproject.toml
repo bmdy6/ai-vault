@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personal-ai-vault"
+version = "0.1.0"
+description = "Local credentials for personal AI tools with optional Supabase snapshot sync"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["cryptography==50.0.1"]
+
+[project.scripts]
+ai-vault = "ai_vault:main"
+ai-vault-sync = "vault_sync:main"
+
+[tool.setuptools]
+py-modules = ["ai_vault", "vault_sync"]

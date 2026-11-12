@@ -1,0 +1,15 @@
+project_id = "ai-vault-local"
+
+[api]
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[functions.vault-sync]
+verify_jwt = false

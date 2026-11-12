@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.env
+.env.*
+vault.json
+cloud-sync.json
+*.pairing
+supabase/.temp/
+supabase/.branches/
