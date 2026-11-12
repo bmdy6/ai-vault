@@ -2,24 +2,30 @@
 
 **给 AI 工具和脚本集中管理 API Key，换台电脑也能接着用。**
 
-Group credentials locally and optionally sync encrypted snapshots to your own Supabase project.
+Local API keys, optional encrypted sync.
 
 [快速开始](#快速开始) · [多设备同步](#多设备同步) · [数据与权限](#数据与权限) · [版本下载](https://github.com/bmdy6/ai-vault/releases/latest)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/sync-dark.png">
-  <img src="docs/readme/sync-light.png" alt="本地 Supabase 上两套独立 vault 的真实测试输出，验证加密快照、配对、导入、冲突停写、旧版本拒绝和设备撤销。" width="840">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.zh-CN.png">
+  <img src="docs/readme/hero-light.zh-CN.png" alt="第一台电脑存入示例 DEMO_API_KEY。第二台电脑从加密快照导入一条记录后，读到同一个示例值 demo-value。" width="600">
 </picture>
 
-图中终端是使用虚构凭据的真实本地 Supabase 验证节选。 [复现步骤](docs/supabase.md#本地验收) · [图源](docs/readme/SOURCES.md)
+本地 Supabase 实跑。第一台存入示例 Key，第二台配对并从加密快照导入后读到同一个值。 [图源](docs/readme/SOURCES.md) · EN [浅色](docs/readme/hero-light.png) / [深色](docs/readme/hero-dark.png)
 
 ## 快速开始
 
-支持 macOS、Linux，需 Python 3.10+ 和 [uv](https://docs.astral.sh/uv/getting-started/installation/)。本机用法无需配置 Supabase。
+支持 macOS、Linux，需 Python 3.10+ 和 [uv](https://docs.astral.sh/uv/getting-started/installation/)。本机使用无需配置 Supabase。复制整个代码块安装。
 
 ```sh
-uv tool install 'git+https://github.com/bmdy6/ai-vault@v0.1.0'
+repo=https://github.com/bmdy6/ai-vault
+uv tool install "git+$repo@v0.1.0"
+uv tool list
+```
 
+### 用临时目录试一次
+
+```sh
 demo_dir=$(mktemp -d)
 ai-vault --vault-home "$demo_dir" init
 printf '%s' 'demo-value' | ai-vault --vault-home "$demo_dir" set DEMO_API_KEY \
