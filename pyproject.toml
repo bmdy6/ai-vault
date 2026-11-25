@@ -17,4 +17,10 @@ ai-vault = "ai_vault:main"
 ai-vault-sync = "vault_sync:main"
 
 [tool.setuptools]
-py-modules = ["ai_vault", "vault_sync"]
+py-modules = ["ai_vault", "vault_sync", "vault_health"]
+
+[tool.setuptools.packages.find]
+include = ["ai_vault_data"]
+
+[tool.setuptools.package-data]
+ai_vault_data = ["probes.json"]

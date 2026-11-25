@@ -108,18 +108,20 @@ class SyncTests(unittest.TestCase):
             self.assertEqual(vault.load_vault(), data)
 
     def test_conflict_preserves_both_inputs(self):
-        local = {'KEY': {'value': 'left'}}
-        remote = {'KEY': {'value': 'right'}}
+        local = {'KEY': {'group':'g','service':'s','entry':{'value': 'left'}}}
+        remote = {'KEY': {'group':'g','service':'s','entry':{'value': 'right'}}}
         before = copy.deepcopy((local, remote))
         with self.assertRaises(sync.SyncError):
             sync.merge_records(local, remote)
         self.assertEqual((local, remote), before)
 
     def test_merge_retains_remote_only_keys(self):
-        merged, incoming, outgoing = sync.merge_records({'A': 1}, {'B': 2})
-        self.assertEqual(merged, {'A': 1, 'B': 2})
-        self.assertEqual(incoming, {'B': 2})
-        self.assertEqual(outgoing, {'A': 1})
+        a = {'A': {'group':'g','service':'s','entry':{'value':'one'}}}
+        b = {'B': {'group':'g','service':'s','entry':{'value':'two'}}}
+        merged, incoming, outgoing = sync.merge_records(a, b)
+        self.assertEqual(merged, {**a, **b})
+        self.assertEqual(incoming, b)
+        self.assertEqual(outgoing, a)
 
     def test_local_import_adds_and_refuses_existing_update(self):
         with tempfile.TemporaryDirectory() as d:

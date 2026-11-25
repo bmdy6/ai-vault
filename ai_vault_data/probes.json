@@ -1,0 +1,417 @@
+[
+  {
+    "id": "openai",
+    "services": [
+      "openai"
+    ],
+    "keys": [
+      "*API_KEY*"
+    ],
+    "url": "https://api.openai.com/v1/models",
+    "headers": {
+      "Authorization": "Bearer {key}"
+    },
+    "rules": [
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "data",
+        "exists": true
+      }
+    ],
+    "prefixes": [
+      "sk-"
+    ]
+  },
+  {
+    "id": "deepseek",
+    "services": [
+      "deepseek",
+      "*-deepseek"
+    ],
+    "keys": [
+      "*API_KEY*",
+      "*TOKEN*"
+    ],
+    "url": "https://api.deepseek.com/user/balance",
+    "headers": {
+      "Authorization": "Bearer {key}"
+    },
+    "rules": [
+      {
+        "status": "no_balance",
+        "http": [
+          200
+        ],
+        "field": "is_available",
+        "equals": false
+      },
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "balance_infos",
+        "exists": true
+      }
+    ],
+    "prefixes": [
+      "sk-"
+    ]
+  },
+  {
+    "id": "anthropic",
+    "services": [
+      "anthropic",
+      "claude"
+    ],
+    "keys": [
+      "*API_KEY*"
+    ],
+    "url": "https://api.anthropic.com/v1/models",
+    "headers": {
+      "x-api-key": "{key}",
+      "anthropic-version": "2023-06-01"
+    },
+    "rules": [
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "data",
+        "exists": true
+      }
+    ],
+    "prefixes": [
+      "sk-ant-"
+    ]
+  },
+  {
+    "id": "commandcode",
+    "services": [
+      "commandcode",
+      "command-code"
+    ],
+    "keys": [
+      "*API_KEY*",
+      "*TOKEN*"
+    ],
+    "url": "https://api.commandcode.ai/alpha/billing/credits",
+    "headers": {
+      "Authorization": "Bearer {key}"
+    },
+    "rules": [
+      {
+        "status": "expired",
+        "http": [
+          401
+        ],
+        "contains": [
+          "expired"
+        ]
+      },
+      {
+        "status": "expired",
+        "http": [
+          400,
+          401,
+          403
+        ],
+        "contains": [
+          "key expired",
+          "key has expired",
+          "token expired",
+          "token has expired",
+          "api key is expired"
+        ]
+      },
+      {
+        "status": "invalid",
+        "http": [
+          400,
+          403
+        ],
+        "contains": [
+          "invalid api key",
+          "invalid key",
+          "invalid token",
+          "revoked"
+        ]
+      },
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "credits",
+        "exists": true
+      }
+    ]
+  },
+  {
+    "id": "pixabay",
+    "services": [
+      "pixabay"
+    ],
+    "keys": [
+      "*API_KEY*",
+      "*KEY"
+    ],
+    "url": "https://pixabay.com/api/?key={key}&q=flower&per_page=3",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "rules": [
+      {
+        "status": "invalid",
+        "http": [
+          400
+        ],
+        "contains": [
+          "invalid or missing api key",
+          "invalid api key"
+        ]
+      },
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "hits",
+        "exists": true
+      }
+    ]
+  },
+  {
+    "id": "github",
+    "services": [
+      "github"
+    ],
+    "keys": [
+      "*TOKEN*",
+      "*PAT*"
+    ],
+    "url": "https://api.github.com/user",
+    "headers": {
+      "Authorization": "Bearer {key}"
+    },
+    "rules": [
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "login",
+        "exists": true
+      }
+    ],
+    "prefixes": [
+      "ghp_",
+      "github_pat_",
+      "gho_",
+      "ghu_",
+      "ghs_"
+    ]
+  },
+  {
+    "id": "telegram",
+    "services": [
+      "telegram"
+    ],
+    "keys": [
+      "*BOT_TOKEN*"
+    ],
+    "url": "https://api.telegram.org/bot{key}/getMe",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "rules": [
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "ok",
+        "equals": true
+      }
+    ]
+  },
+  {
+    "id": "linear",
+    "services": [
+      "linear"
+    ],
+    "keys": [
+      "*API_KEY*",
+      "*TOKEN*"
+    ],
+    "url": "https://api.linear.app/graphql",
+    "headers": {
+      "Authorization": "{key}",
+      "Content-Type": "application/json"
+    },
+    "rules": [
+      {
+        "status": "invalid",
+        "http": [
+          200,
+          400
+        ],
+        "contains": [
+          "AUTHENTICATION_ERROR",
+          "not authenticated",
+          "invalid api key"
+        ]
+      },
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "field": "data.viewer.id",
+        "exists": true
+      }
+    ],
+    "method": "POST",
+    "body": "{ \"query\": \"query { viewer { id } }\" }"
+  },
+  {
+    "id": "supabase",
+    "services": [
+      "supabase"
+    ],
+    "keys": [
+      "*ACCESS_TOKEN*",
+      "*PAT*"
+    ],
+    "url": "https://api.supabase.com/v1/projects",
+    "headers": {
+      "Authorization": "Bearer {key}"
+    },
+    "rules": [
+      {
+        "status": "invalid",
+        "http": [
+          401
+        ]
+      },
+      {
+        "status": "no_balance",
+        "http": [
+          402
+        ]
+      },
+      {
+        "status": "ok",
+        "http": [
+          200
+        ],
+        "contains": [
+          "["
+        ]
+      }
+    ],
+    "prefixes": [
+      "sbp_"
+    ]
+  }
+]

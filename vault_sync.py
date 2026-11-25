@@ -94,6 +94,11 @@ def records_from(data: dict, blocked: set[str], allowed_groups: list[str] | None
                 if name in BOOTSTRAP_KEYS or name in blocked or not isinstance(entry, dict) or 'value' not in entry:
                     continue
                 entries_by_name.setdefault(name, []).append({'group': group, 'service': service, 'entry': copy.deepcopy(entry)})
+    from vault_health import META
+    for marker in data.get(META, {}).get('tombstones', {}).values():
+        group, service, name = marker['path']
+        if group in (allowed_groups if allowed_groups is not None else ['personal-infra']) and name not in blocked | BOOTSTRAP_KEYS:
+            entries_by_name.setdefault(name, []).append({'group': group, 'service': service, 'entry': {'_deleted_at': marker['deleted_at']}})
     for name, entries in entries_by_name.items():
         for record in entries:
             identity = name
@@ -123,7 +128,7 @@ def find_record(vault, data: dict, identity: str, record: dict):
 def validate_records(value: object, blocked: set[str], allowed_groups: list[str] | None = None) -> dict[str, dict]:
     """兼容旧个人快照，拒绝未授权分组和同步启动凭据导入。"""
     allowed = set(allowed_groups if allowed_groups is not None else ['personal-infra'])
-    if not isinstance(value, dict) or value.get('format') not in (1, 2):
+    if not isinstance(value, dict) or value.get('format') not in (1, 2, 3):
         raise SyncError('云端快照格式不受支持，请升级同步工具。')
     scope = value.get('scope')
     if not isinstance(scope, list) or not scope or any(not isinstance(group, str) or not group for group in scope):
@@ -137,25 +142,76 @@ def validate_records(value: object, blocked: set[str], allowed_groups: list[str]
         raise SyncError('云端凭据结构不正确。')
     paths = set()
     for name, record in records.items():
-        if not isinstance(name, str) or not isinstance(record, dict) or record.get('group') not in scope or not isinstance(record.get('service'), str) or not isinstance(record.get('entry'), dict) or 'value' not in record['entry']:
+        if not isinstance(name, str) or not isinstance(record, dict) or record.get('group') not in scope or not isinstance(record.get('service'), str) or not isinstance(record.get('entry'), dict) or ('value' not in record['entry'] and not (value['format'] == 3 and isinstance(record['entry'].get('_deleted_at'), str))):
             raise SyncError('云端快照包含禁止导入的记录。')
+        from datetime import datetime
+        for stamp in ('_deleted_at', '_restored_at'):
+            if stamp in record['entry']:
+                if value['format'] != 3:
+                    raise SyncError('生命周期标记需要新版快照格式。')
+                try:
+                    parsed_stamp = datetime.fromisoformat(record['entry'][stamp])
+                    if parsed_stamp.utcoffset() is None:
+                        raise ValueError()
+                except (TypeError, ValueError):
+                    raise SyncError('云端删除或恢复标记格式不正确。') from None
+        if '_deleted_at' in record['entry'] and (value['format'] != 3 or set(record['entry']) != {'_deleted_at'}):
+            raise SyncError('云端删除标记不能包含凭据。')
         original = record.get('key', name)
         if not isinstance(original, str) or not original or original in BOOTSTRAP_KEYS:
             raise SyncError('云端快照包含禁止导入的记录。')
         path = (record['group'], record['service'], original)
-        if path in paths or ('key' in record and (value['format'] != 2 or name != record_identity(*path))):
+        if path in paths or ('key' in record and (value['format'] not in (2, 3) or name != record_identity(*path))):
             raise SyncError('云端快照包含重复或无效的配置路径。')
         paths.add(path)
     return {name: record for name, record in records.items() if record.get('key', name) not in blocked}
 
 
 def merge_records(local: dict, remote: dict) -> tuple[dict, dict, dict]:
-    """合并互不冲突的新增项，同名不同值时拒绝覆盖。"""
-    conflicts = sorted(name for name in local.keys() & remote.keys() if local[name] != remote[name])
-    if conflicts:
-        raise SyncError('存在冲突，未覆盖任何值：' + ', '.join(conflicts) + '；请在真实终端使用 resolve 选择来源。')
-    merged = {**remote, **local}
-    return merged, {k: remote[k] for k in remote.keys()-local.keys()}, {k: local[k] for k in local.keys()-remote.keys()}
+    """Merge by full path; persistent tombstones beat stale copies, explicit newer restores win."""
+    def paths(records):
+        return {(r['group'], r['service'], r.get('key', n)): r for n,r in records.items()}
+    left, right = paths(local), paths(remote)
+    merged_paths = {}
+    for path in left.keys() | right.keys():
+        a, b = left.get(path), right.get(path)
+        if a is None or b is None:
+            merged_paths[path] = copy.deepcopy(a or b)
+            continue
+        ae, be = a['entry'], b['entry']
+        deletion = max(ae.get('_deleted_at', ''), be.get('_deleted_at', ''))
+        restoration = max(ae.get('_restored_at', ''), be.get('_restored_at', ''))
+        if deletion:
+            winner = (a if ae.get('_deleted_at') == deletion else b) if deletion >= restoration else (a if ae.get('_restored_at') == restoration else b)
+        else:
+            ignored = {'status', 'last_checked', '_restored_at'}
+            if {k:v for k,v in ae.items() if k not in ignored} != {k:v for k,v in be.items() if k not in ignored}:
+                raise SyncError('存在冲突，未覆盖任何值：' + path[2] + '；请在真实终端使用 resolve 选择来源。')
+            winner = a if ae.get('last_checked', '') >= be.get('last_checked', '') else b
+        winner = copy.deepcopy(winner)
+        if restoration and '_deleted_at' not in winner['entry']:
+            winner['entry']['_restored_at'] = restoration
+            if restoration > winner['entry'].get('last_checked', ''):
+                winner['entry']['status'] = 'unknown'
+                winner['entry'].pop('last_checked', None)
+        merged_paths[path] = winner
+    counts = {}
+    for g,s,n in merged_paths:
+        counts[n] = counts.get(n, 0) + 1
+    merged, incoming, outgoing = {}, {}, {}
+    for path, record in merged_paths.items():
+        g,s,n = path
+        identity = record_identity(*path) if counts[n] > 1 else n
+        record.pop('key', None)
+        if counts[n] > 1:
+            record['key'] = n
+        merged[identity] = record
+        # Compare record payloads by path, independent of legacy identity encoding.
+        for source, delta in ((left, incoming), (right, outgoing)):
+            prior = source.get(path)
+            if prior is None or prior['entry'] != record['entry']:
+                delta[identity] = record
+    return merged, incoming, outgoing
 
 
 def validate_config(config: dict) -> dict:
@@ -167,7 +223,7 @@ def validate_config(config: dict) -> dict:
             or parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment):
         raise SyncError('需要 Supabase HTTPS 地址或 127.0.0.1 上的本地测试地址。')
     groups = config.get('allowed_groups')
-    if not isinstance(groups, list) or not groups or any(not isinstance(group, str) or not group or group in {'version', 'created_at', '*'} for group in groups) or len(groups) != len(set(groups)):
+    if not isinstance(groups, list) or not groups or any(not isinstance(group, str) or not group or group in {'version', 'created_at', '_vault_lifecycle', '*'} for group in groups) or len(groups) != len(set(groups)):
         raise SyncError('同步配置必须明确列出已授权分组。')
     blocked = config.get('blocked_keys', [])
     if not isinstance(blocked, list) or any(not isinstance(key, str) for key in blocked):
@@ -241,26 +297,38 @@ class Cloud:
         """按预期版本追加加密快照，不替换旧版本。"""
         scope = sorted(self.allowed_groups)
         legacy = scope == ['personal-infra'] and all('key' not in record for record in records.values())
-        plain = {'format': 1 if legacy else 2, 'scope': scope, 'records': records}
+        lifecycle = any('_deleted_at' in r['entry'] or '_restored_at' in r['entry'] for r in records.values())
+        plain = {'format': 3 if lifecycle else (1 if legacy else 2), 'scope': scope, 'records': records}
         validate_records(plain, set(), self.allowed_groups)
         payload = seal(plain, key)
         return self.call({'action': 'append', 'expected_version': expected_version, 'entry_count': len(records), 'payload': payload})['version']
 
 
 def add_records(vault, records: dict) -> int:
-    """只新增不存在的 Key，禁止移动或覆盖已有记录。"""
-    count = 0
+    """Apply merged metadata/deletions without overwriting a live credential value."""
+    from vault_health import META, backup, delete_paths, path_id
     data = vault.load_vault()
+    count = 0
     for name, record in sorted(records.items()):
-        existing = find_record(vault, data, name, record)
-        if existing:
-            if existing != (record['group'], record['service'], record['entry']):
-                raise SyncError('本机 Key 已变化，停止导入：' + name)
+        g,s,n = record['group'], record['service'], record.get('key', name)
+        path = [g,s,n]
+        identity = path_id(*path)
+        existing = data.get(g, {}).get(s, {}).get(n)
+        entry = record['entry']
+        if '_deleted_at' in entry:
+            if existing:
+                delete_paths(data, [path])
+            data.setdefault(META, {}).setdefault('tombstones', {})[identity] = {'path': path, 'deleted_at': entry['_deleted_at']}
             continue
-        entries = data.setdefault(record['group'], {}).setdefault(record['service'], {})
-        entries[record.get('key', name)] = copy.deepcopy(record['entry'])
-        count += 1
-    if count:
+        if existing and existing.get('value') != entry.get('value'):
+            raise SyncError('本机 Key 已变化，停止导入：' + n)
+        if not existing:
+            count += 1
+        data.setdefault(g, {}).setdefault(s, {})[n] = copy.deepcopy(entry)
+        data.get(META, {}).get('tombstones', {}).pop(identity, None)
+        data.get(META, {}).get('trash', {}).pop(identity, None)
+    if data != vault.load_vault():
+        backup(vault)
         vault.save_vault(data)
     return count
 
@@ -281,10 +349,10 @@ def sync(home: Path, apply: bool = False) -> dict:
         if found and (found[0] != record['group'] or found[1] != record['service']):
             raise SyncError('远端 Key 与本机其他归属冲突：' + name)
     merged, incoming, outgoing = merge_records(local, remote)
-    counts = {group: sum(record['group'] == group for record in merged.values()) for group in groups}
-    report = {'mode': 'apply' if apply else 'preview', 'version': version, 'entry_count': len(merged), 'entries_by_group': counts, 'add_local': len(incoming), 'add_cloud': len(outgoing), 'blocked_keys': sorted(blocked)}
+    counts = {group: sum(record['group'] == group and '_deleted_at' not in record['entry'] for record in merged.values()) for group in groups}
+    report = {'mode': 'apply' if apply else 'preview', 'version': version, 'entry_count': len(merged), 'entries_by_group': counts, 'add_local': sum('_deleted_at' not in r['entry'] for r in incoming.values()), 'add_cloud': sum('_deleted_at' not in r['entry'] for r in outgoing.values()), 'delete_local': sum('_deleted_at' in r['entry'] for r in incoming.values()), 'delete_cloud': sum('_deleted_at' in r['entry'] for r in outgoing.values()), 'blocked_keys': sorted(blocked)}
     if apply:
-        if outgoing:
+        if merged != remote:
             report['version'] = cloud.append(merged, key, version)
         report['added_local'] = add_records(vault, incoming)
         verified_version, remote_after = cloud.read(key, blocked)
@@ -397,6 +465,8 @@ def resolve(home: Path, name: str, use: str) -> None:
     local = records_from(vault.load_vault(), blocked, config['allowed_groups'])
     if name not in local or name not in remote:
         raise SyncError('该 Key 不是两边都存在的冲突项。')
+    if any('_deleted_at' in r['entry'] for r in (local[name], remote[name])):
+        raise SyncError('删除标记不能通过 resolve 覆盖；请使用 restore。')
     if 'key' in local[name] or 'key' in remote[name]:
         raise SyncError('跨服务同名配置的冲突需先人工整理原路径，未覆盖任何值。')
     if (local[name]['group'], local[name]['service']) != (remote[name]['group'], remote[name]['service']):
@@ -425,7 +495,7 @@ def main() -> None:
     p = sub.add_parser('init-sync', help='生成首台设备凭据和登记 SQL')
     p.add_argument('--endpoint', required=True)
     p.add_argument('--group', action='append', required=True)
-    p = sub.add_parser('sync', help='默认只预览；--apply 才同步新增项')
+    p = sub.add_parser('sync', help='默认预览新增和删除；--apply 才执行')
     p.add_argument('--apply', action='store_true')
     p = sub.add_parser('pair', help='在本机生成加密设备配对包')
     p.add_argument('output', type=Path)
