@@ -71,7 +71,7 @@ def die(msg: str, code: int = 1) -> None:
 def iter_entries(data: dict):
     """Yield (group, service, key, entry) from the grouped vault."""
     for group, services in data.items():
-        if group in {"version", "created_at"} or not isinstance(services, dict):
+        if group in {"version", "created_at", "_vault_lifecycle"} or not isinstance(services, dict):
             continue
         for service, entries in services.items():
             if not isinstance(entries, dict):
@@ -136,7 +136,7 @@ def cmd_list(args) -> None:
         if (group, service) != current:
             print(f"  [{group} / {service}]")
             current = (group, service)
-        print(f"    {key:36s} {mask(str(entry.get('value', '')))}")
+        print(f"    {key:36s} {mask(str(entry.get('value', '')))}  [{entry.get('status', 'unchecked')}] {entry.get('last_checked', '')}")
         if entry.get("description"):
             print(f"    {'':36s} {entry['description']}")
     print(f"\n共 {len(entries)} 条。取明文：ai-vault get <key>")
@@ -172,10 +172,19 @@ def cmd_set(args) -> None:
         die("❌ 已拒绝修改已有配置。")
     group = args.group or args.project or "personal-infra"
     service = args.service or args.category or "general"
+    import vault_health as health
+    if group == health.META:
+        die('This group name is reserved for vault lifecycle metadata.')
+    identity = health.path_id(group, service, args.key)
+    recreated = identity in data.get(health.META, {}).get('tombstones', {})
     ensure_service(data, group, service)[args.key] = {
         "value": args.value,
         "description": args.description or "",
     }
+    if recreated:
+        data[group][service][args.key]['_restored_at'] = health.now()
+        data[health.META]['tombstones'].pop(identity, None)
+        data[health.META].get('trash', {}).pop(identity, None)
     save_vault(data)
     print(f"✅ 新增：{args.key} = {mask(args.value)}  [{group}/{service}]")
 
@@ -197,6 +206,8 @@ def cmd_update(args) -> None:
     if confirm != args.key:
         die("已取消（输入与 key 名不符）")
     entry["value"] = args.value
+    entry.pop("status", None)
+    entry.pop("last_checked", None)
     save_vault(data)
     print(f"✅ 已更新：{args.key}")
 
@@ -214,11 +225,9 @@ def cmd_delete(args) -> None:
     confirm = input("\n确认删除？输入完整 key 名确认：").strip()
     if confirm != args.key:
         die("已取消（输入与 key 名不符）")
-    del data[group][service][args.key]
-    if not data[group][service]:
-        del data[group][service]
-    if not data[group]:
-        del data[group]
+    import vault_health as health
+    health.backup(sys.modules[__name__])
+    health.delete_paths(data, [[group, service, args.key]])
     save_vault(data)
     print(f"✅ 已删除：{args.key}")
 
@@ -264,6 +273,22 @@ def main() -> None:
     p_delete.add_argument("key")
     p_delete.set_defaults(func=cmd_delete)
 
+    import vault_health as health
+    p = sub.add_parser("check", help="只读接口检测；写回状态与检测时间，先自动备份")
+    p.add_argument("--group")
+    p.add_argument("--service")
+    p.add_argument("--probes", type=Path, help="受信任的自定义只读探测 JSON")
+    p.set_defaults(func=lambda a: health.check(sys.modules[__name__], a.group, a.service, a.probes))
+    p = sub.add_parser("prune", help="默认预览 invalid/expired；确认后移入回收站")
+    p.add_argument("entries", nargs="*", help="完整 group/service/name 路径")
+    p.add_argument("--yes", action="store_true")
+    p.add_argument("--confirm", action="store_true", help="在真实终端交互确认")
+    p.set_defaults(func=lambda a: health.prune(sys.modules[__name__], a.entries, a.yes, a.confirm))
+    p = sub.add_parser("restore", help="从30天回收站恢复，不覆盖已有项")
+    p.add_argument("entries", nargs="+", help="完整 group/service/name 路径")
+    p.add_argument("--yes", action="store_true")
+    p.set_defaults(func=lambda a: health.restore(sys.modules[__name__], a.entries, a.yes))
+
     args = ap.parse_args()
     global VAULT_DIR, VAULT_FILE
     VAULT_DIR = str(args.vault_home)
@@ -286,7 +311,10 @@ def main() -> None:
     with vault_lock(args.vault_home):
         if args.cmd == "init" and args.force and (args.vault_home / "cloud-sync.json").exists():
             die("当前库已配置同步，拒绝清空。")
-        args.func(args)
+        try:
+            args.func(args)
+        except (OSError, ValueError, KeyError, TypeError):
+            die("Vault operation failed: inaccessible file or invalid data/configuration; no credential output.")
 
 
 if __name__ == "__main__":
